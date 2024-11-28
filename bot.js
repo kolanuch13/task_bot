@@ -24,24 +24,8 @@ bot.command('add_task', async (ctx) => {
     // Додавання задачі в базу даних
     const task = await db.addTask(taskName, description, executor);
     ctx.reply(`Задача додана: ${taskName} для ${executor}`);
-    
-    console.log(task.executor)
 
-    // Надсилання повідомлення виконавцю
-    try {
-      await bot.telegram.sendMessage(
-        task.executorId, // executorId має бути правильним chat_id
-        `Вам призначено нову задачу: ${taskName}\nОпис: ${description}\nПерегляньте список задач у боті.`
-      );
-    } catch (sendError) {
-      console.error(
-        'Помилка при відправленні повідомлення виконавцю:',
-        sendError
-      );
-      ctx.reply(
-        'Не вдалося надіслати повідомлення виконавцю. Переконайтеся, що він почав чат з ботом.'
-      );
-    }
+
   } catch (error) {
     console.error('Помилка при додаванні задачі:', error);
     ctx.reply('Сталася помилка при додаванні задачі. Спробуйте знову.');
@@ -75,6 +59,36 @@ bot.command('done_task', (ctx) => {
     ctx.reply(`Задача "${result.task.name}" позначена як виконана.`);
   } else {
     ctx.reply('Помилка: або задачі не існує, або вона вже завершена.');
+  }
+});
+
+bot.command('tasks_for', async (ctx) => {
+  const args = ctx.message.text.split(' ');
+
+  // Перевірка формату команди
+  if (args.length < 2) {
+    return ctx.reply('Формат: /tasks_for [username]');
+  }
+
+  const executor = args[1]; // Ім'я виконавця
+
+  try {
+    // Отримання задач з бази даних
+    const tasks = await db.getTasksByExecutor(executor);
+
+    // Якщо задач немає
+    if (!tasks || tasks.length === 0) {
+      return ctx.reply(`У виконавця ${executor} немає активних задач.`);
+    }
+
+    // Формування відповіді
+    const response = tasks
+      .map((task, index) => `${index + 1}. ${task.name} - ${task.description}`)
+      .join('\n');
+    ctx.reply(`Задачі для ${executor}:\n${response}`);
+  } catch (error) {
+    console.error('Помилка при отриманні задач:', error);
+    ctx.reply('Сталася помилка при отриманні задач. Спробуйте знову.');
   }
 });
 
